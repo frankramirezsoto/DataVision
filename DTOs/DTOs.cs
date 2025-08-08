@@ -80,4 +80,14 @@ namespace DataVision.DTOs
         public T? Data { get; set; }
         public List<string> Errors { get; set; } = new List<string>();
     }
+
+    // Additional DTO for dashboard summary
+    public class DashboardSummaryDto
+    {
+        public int TotalFuelTypes { get; set; }
+        public decimal AveragePrice { get; set; }
+        public DateTime LastUpdated { get; set; }
+        public string TopFuelByVolume { get; set; } = string.Empty;
+        public string DataSource { get; set; } = string.Empty;
+    }
 }
