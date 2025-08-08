@@ -1,0 +1,6 @@
+@DataVision_HostAddress = http://localhost:5287
+
+GET {{DataVision_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
