@@ -11,12 +11,10 @@ namespace DataVision.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly ILogService _logService;
 
-        public AuthController(IAuthService authService, ILogService logService)
+        public AuthController(IAuthService authService)
         {
             _authService = authService;
-            _logService = logService;
         }
 
         [HttpPost("login")]
@@ -45,6 +43,7 @@ namespace DataVision.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex);
                 return StatusCode(500, new LoginResponse
                 {
                     Success = false,
@@ -54,7 +53,6 @@ namespace DataVision.Controllers
         }
 
         [HttpPost("register")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponse<UserDto>>> Register([FromBody] CreateUserRequest request)
         {
             if (!ModelState.IsValid)
@@ -80,112 +78,13 @@ namespace DataVision.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex);
                 return StatusCode(500, new ApiResponse<UserDto>
                 {
                     Success = false,
                     Message = "Error interno del servidor"
                 });
             }
-        }
-
-        [HttpGet("profile")]
-        [Authorize]
-        public async Task<ActionResult<ApiResponse<UserDto>>> GetProfile()
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                var user = await _authService.GetUserByIdAsync(userId);
-
-                if (user == null)
-                {
-                    return NotFound(new ApiResponse<UserDto>
-                    {
-                        Success = false,
-                        Message = "Usuario no encontrado"
-                    });
-                }
-
-                return Ok(new ApiResponse<UserDto>
-                {
-                    Success = true,
-                    Data = user,
-                    Message = "Perfil obtenido exitosamente"
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse<UserDto>
-                {
-                    Success = false,
-                    Message = "Error al obtener el perfil"
-                });
-            }
-        }
-
-        [HttpPost("validate-token")]
-        [Authorize]
-        public IActionResult ValidateToken()
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                var username = User.FindFirst(ClaimTypes.Name)?.Value;
-                var role = User.FindFirst(ClaimTypes.Role)?.Value;
-
-                return Ok(new ApiResponse<object>
-                {
-                    Success = true,
-                    Data = new
-                    {
-                        Valid = true,
-                        UserId = userId,
-                        Username = username,
-                        Role = role
-                    },
-                    Message = "Token válido"
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = "Error al validar el token"
-                });
-            }
-        }
-
-        [HttpGet("users")]
-        [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<ApiResponse<List<UserDto>>>> GetAllUsers()
-        {
-            try
-            {
-                var currentUserId = GetCurrentUserId();
-
-                // This would require adding a method to AuthService
-                return Ok(new ApiResponse<List<UserDto>>
-                {
-                    Success = true,
-                    Message = "Lista de usuarios (implementar en AuthService)",
-                    Data = new List<UserDto>()
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse<List<UserDto>>
-                {
-                    Success = false,
-                    Message = "Error al obtener lista de usuarios"
-                });
-            }
-        }
-
-        private int GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst("userId") ?? User.FindFirst(ClaimTypes.NameIdentifier);
-            return int.Parse(userIdClaim?.Value ?? "0");
         }
     }
 }

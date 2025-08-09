@@ -17,11 +17,6 @@ namespace DataVision.Models
         [StringLength(255)]
         public string PasswordHash { get; set; } = string.Empty;
 
-        [StringLength(20)]
-        public string Role { get; set; } = "User";
-
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
         // Navigation property
         public virtual ICollection<Log> Logs { get; set; } = new List<Log>();
     }

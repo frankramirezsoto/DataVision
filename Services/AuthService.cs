@@ -14,7 +14,6 @@ namespace DataVision.Services
         Task<LoginResponse> AuthenticateAsync(LoginRequest request);
         Task<ApiResponse<UserDto>> CreateUserAsync(CreateUserRequest request);
         Task<UserDto?> GetUserByIdAsync(int userId);
-        string GenerateJwtToken(User user);
     }
 
     public class AuthService : IAuthService
@@ -44,25 +43,48 @@ namespace DataVision.Services
                     };
                 }
 
-                var token = GenerateJwtToken(user);
-                var expiresAt = DateTime.UtcNow.AddHours(24);
+                // Read JWT config
+                var jwtSettings = _configuration.GetSection("Jwt");
+                var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
+                var expiresAt = DateTime.UtcNow.AddHours(double.Parse(jwtSettings["ExpireHours"]));
+
+                // Create claims
+                var claims = new[]
+                {
+                    new Claim(JwtRegisteredClaimNames.Sub, user.Username),
+                    new Claim("userId", user.Id.ToString()),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                };
+
+                var credentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256
+                );
+
+                var token = new JwtSecurityToken(
+                    issuer: jwtSettings["Issuer"],
+                    audience: jwtSettings["Audience"],
+                    claims: claims,
+                    expires: expiresAt,
+                    signingCredentials: credentials
+                );
+
+                var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
                 return new LoginResponse
                 {
                     Success = true,
-                    Token = token,
+                    Token = tokenString,
                     Message = "Autenticación exitosa",
                     User = new UserDto
                     {
                         Id = user.Id,
-                        Username = user.Username,
-                        Role = user.Role,
-                        CreatedAt = user.CreatedAt
+                        Username = user.Username
                     },
                     ExpiresAt = expiresAt
                 };
             }
-            catch (Exception ex)
+            catch
             {
                 return new LoginResponse
                 {
@@ -71,6 +93,7 @@ namespace DataVision.Services
                 };
             }
         }
+
 
         public async Task<ApiResponse<UserDto>> CreateUserAsync(CreateUserRequest request)
         {
@@ -94,9 +117,7 @@ namespace DataVision.Services
                 var user = new User
                 {
                     Username = request.Username,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                    Role = request.Role,
-                    CreatedAt = DateTime.UtcNow
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
                 };
 
                 _context.Users.Add(user);
@@ -105,9 +126,7 @@ namespace DataVision.Services
                 var userDto = new UserDto
                 {
                     Id = user.Id,
-                    Username = user.Username,
-                    Role = user.Role,
-                    CreatedAt = user.CreatedAt
+                    Username = user.Username
                 };
 
                 return new ApiResponse<UserDto>
@@ -136,40 +155,8 @@ namespace DataVision.Services
             return new UserDto
             {
                 Id = user.Id,
-                Username = user.Username,
-                Role = user.Role,
-                CreatedAt = user.CreatedAt
+                Username = user.Username
             };
-        }
-
-        public string GenerateJwtToken(User user)
-        {
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var secretKey = jwtSettings["SecretKey"] ?? "your-super-secret-key-here-make-it-long";
-            var issuer = jwtSettings["Issuer"] ?? "DataVisionAPI";
-            var audience = jwtSettings["Audience"] ?? "DataVisionClient";
-
-            var key = Encoding.ASCII.GetBytes(secretKey);
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.Username),
-                    new Claim(ClaimTypes.Role, user.Role),
-                    new Claim("userId", user.Id.ToString())
-                }),
-                Expires = DateTime.UtcNow.AddHours(24),
-                Issuer = issuer,
-                Audience = audience,
-                SigningCredentials = new SigningCredentials(
-                    new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256Signature)
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
         }
     }
 }
