@@ -29,11 +29,24 @@ namespace DataVision.Filters
             // Proceed with action execution
             var resultContext = await next();
 
-            // Get user ID from JWT claims
-            var userIdClaim = context.HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
+            // Get user ID from JWT claims - use the custom "userId" claim
+            var userIdClaim = context.HttpContext.User.FindFirst("userId");
             if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
             {
-                await _logService.CreateLogAsync(userId, endpoint ?? "Unknown");
+                try
+                {
+                    await _logService.CreateLogAsync(userId, endpoint ?? "Unknown");
+                }
+                catch (Exception ex)
+                {
+                    // Log the error but don't break the request
+                    Console.WriteLine($"Error creating log: {ex.Message}");
+                }
+            }
+            else
+            {
+                // Debug: Log when user ID claim is not found
+                Console.WriteLine("User ID claim not found or invalid");
             }
         }
     }

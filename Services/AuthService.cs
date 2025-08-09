@@ -51,8 +51,9 @@ namespace DataVision.Services
                 // Create claims
                 var claims = new[]
                 {
-                    new Claim(JwtRegisteredClaimNames.Sub, user.Username),
-                    new Claim("userId", user.Id.ToString()),
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // User ID in standard claim
+                    new Claim(ClaimTypes.Name, user.Username), // Username in standard claim
+                    new Claim(JwtRegisteredClaimNames.Sub, user.Username), // Subject (standard JWT claim)
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
                 };
 
