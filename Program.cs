@@ -11,8 +11,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHttpClient<IRecopeService, RecopeService>();
 
-// Add services to the container.
-// JWT Authentication Configuration
+// CORS
+var MyCors = "_mycors";
+builder.Services.AddCors(o =>
+{
+    o.AddPolicy(MyCors, p => p
+        .WithOrigins("http://localhost:8080") // FRONT
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+    );
+});
+
+// JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
 
@@ -36,10 +46,9 @@ builder.Services.AddAuthentication(options =>
 });
 builder.Services.AddAuthorization();
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// Database Configuration
+// DB
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer")));
 
@@ -56,7 +65,6 @@ builder.Services.AddControllers(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -64,6 +72,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// aplica CORS antes de auth/routers
+app.UseCors(MyCors);
 
 app.UseAuthentication();
 app.UseAuthorization();
